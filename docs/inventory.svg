@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="500" viewBox="0 0 600 500" xml:space="preserve" role="img" aria-label="Loadout inventory: Legendary, Epic, Rare and Poor mod cards">
+  <style>
+    :root { --fg:#1f2328; --muted:#59636e; --bg:#ffffff; --legendary:#d9730d; --epic:#8b3fd9; --rare:#1f6feb; --poor:#8c959f; }
+    @media (prefers-color-scheme: dark) {
+      :root { --fg:#e6edf3; --muted:#9198a1; --bg:#0d1117; --legendary:#f0883e; --epic:#bc8cff; --rare:#58a6ff; --poor:#6e7681; }
+    }
+    text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; fill: var(--fg); }
+    .muted { fill: var(--muted); }
+    .b { font-weight: 700; }
+    .bg { fill: var(--bg); }
+    .card { fill: none; stroke-width: 1.5; }
+    .legendary { stroke: var(--legendary); } .t-legendary { fill: var(--legendary); }
+    .epic { stroke: var(--epic); } .t-epic { fill: var(--epic); }
+    .rare { stroke: var(--rare); } .t-rare { fill: var(--rare); }
+    .poor { stroke: var(--poor); } .t-poor { fill: var(--poor); }
+  </style>
+  <rect class="bg" width="600" height="500" rx="8"/>
+
+  <text x="20" y="30" class="b">⚔ Inventory · 6 of 7 active</text>
+
+  <!-- Legendary: double border -->
+  <rect class="card legendary" x="20" y="48" width="560" height="100" rx="3"/>
+  <rect class="card legendary" x="24" y="52" width="552" height="92" rx="2"/>
+  <text x="38" y="76" class="b t-legendary">⚙ Loadout</text>
+  <text x="562" y="76" text-anchor="end" class="t-legendary">◆ Equipped</text>
+  <text x="38" y="96" class="t-legendary">Legendary Mod <tspan class="muted">· v0.5.1</tspan></text>
+  <text x="38" y="116" class="muted">▸ “Manage your Claude Code mods safely. Tog…”</text>
+  <text x="38" y="136">+runs commands  +writes files  +own panel</text>
+
+  <!-- Epic: double border -->
+  <rect class="card epic" x="20" y="164" width="560" height="120" rx="3"/>
+  <rect class="card epic" x="24" y="168" width="552" height="112" rx="2"/>
+  <text x="38" y="192" class="b t-epic">◇ repo-guard</text>
+  <text x="562" y="192" text-anchor="end" class="t-epic">◆ Equipped</text>
+  <text x="38" y="212" class="t-epic">Epic Mod <tspan class="muted">· v0.2.1</tspan></text>
+  <text x="38" y="232" class="muted">▸ “Blocks writes to repos you only read. Wa…”</text>
+  <text x="38" y="252">+runs commands  +writes files  +watches tool calls  +own panel</text>
+  <text x="38" y="272" class="muted">[ Open ↗ ]  [ More ▾ ]</text>
+
+  <!-- Rare: single rounded border -->
+  <rect class="card rare" x="20" y="300" width="560" height="120" rx="8"/>
+  <text x="38" y="324" class="b t-rare">◇ filetree</text>
+  <text x="562" y="324" text-anchor="end" class="t-rare">◆ Equipped</text>
+  <text x="38" y="344" class="t-rare">Rare Mod <tspan class="muted">· v0.2.25</tspan></text>
+  <text x="38" y="364" class="muted">⌂ Installed from a marketplace (owner/repo)</text>
+  <text x="38" y="384" class="muted">▸ “An IDE-style file tree for Claude Code”</text>
+  <text x="38" y="404">+writes files  +own panel  <tspan class="muted">  [ Open ↗ ]  [ More ▾ ]</tspan></text>
+
+  <!-- Poor: off -->
+  <rect class="card poor" x="20" y="436" width="560" height="52" rx="8"/>
+  <text x="38" y="458" class="b t-poor">◇ some-mod</text>
+  <text x="562" y="458" text-anchor="end" class="t-poor">◇ Equip</text>
+  <text x="38" y="478" class="t-poor">Poor Mod <tspan class="muted">· v1.0.0</tspan></text>
+</svg>

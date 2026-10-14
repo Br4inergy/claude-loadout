@@ -4,36 +4,9 @@
 one's code can actually do, and keeps code you have not reviewed from running. A new mod or a new version stays blocked
 until you approve it, usually after Claude audits it for you.
 
-```
-⚔ Inventory · 6 of 7 active
-
-╔══════════════════════════════════════════════╗
-║ ⚙ Loadout                         ◆ Equipped ║   ← orange: Legendary
-║ Legendary Mod · v0.5.1                       ║
-║ ▸ “Manage your Claude Code mods safely. Tog…”║
-║ +runs commands  +writes files  +own panel    ║
-╚══════════════════════════════════════════════╝
-╔══════════════════════════════════════════════╗
-║ ◇ repo-guard                      ◆ Equipped ║   ← purple: Epic
-║ Epic Mod · v0.2.1                            ║
-║ ▸ “Blocks writes to repos you only read. Wa…”║
-║ +runs commands  +writes files  +watches tool ║
-║ calls  +own panel                            ║
-║ [ Open ↗ ]  [ More ▾ ]                       ║
-╚══════════════════════════════════════════════╝
-╭──────────────────────────────────────────────╮
-│ ◇ filetree                        ◆ Equipped │   ← blue: Rare
-│ Rare Mod · v0.2.25                           │
-│ ⌂ Installed from a marketplace (owner/repo)  │
-│ ▸ “An IDE-style file tree for Claude Code”   │
-│ +writes files  +own panel                    │
-│ [ Open ↗ ]  [ More ▾ ]                       │
-╰──────────────────────────────────────────────╯
-╭──────────────────────────────────────────────╮
-│ ◇ some-mod                          ◇ Equip  │   ← grey: Poor (off)
-│ Poor Mod · v1.0.0                            │
-╰──────────────────────────────────────────────╯
-```
+<p align="center">
+  <img src="docs/inventory.svg" alt="Loadout inventory: a Legendary card in orange, an Epic card in purple, a Rare card in blue and a Poor (off) card in grey" width="600">
+</p>
 
 ## Install
 
