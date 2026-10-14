@@ -7,7 +7,7 @@ import { builtinIds, capsOf, isSafeId, openCommandFor, pinsOf, rarityOf, sortRow
 import { isApproved, usesText } from '../hooks/gate'
 import { pickLang, words } from '../hooks/i18n'
 import { costOf } from '../hooks/pricing'
-import { changedFiles, compareVersions, listedVersion, sourceOf } from '../hooks/updates'
+import { changedFiles, changedList, compareVersions, listedVersion, sourceOf } from '../hooks/updates'
 
 const BAND = {
   plugin: 'loadout',
@@ -33,14 +33,14 @@ const LIST = [
 /** What each fake plugin's own plugin.json says it does. */
 const DESCRIPTIONS: Record<string, string> = {
   '/p/savvy/.claude-plugin/plugin.json': 'savvy-progress: progress bar and an agents panel',
-  '/p/codex/.claude-plugin/plugin.json': 'Use Codex from Claude Code to review code or delegate tasks.',
+  '/p/codex/.claude-plugin/plugin.json': 'Use Codex from Claude Code to review code or delegate tasks. It also runs adversarial reviews of your changes.',
 }
 
 const VALIDATE = `  ❯ ./register.tsx hooks: session.start, tool.call{tool=Agent}, ui.render{component=AbovePrompt}, ui.render{component=Pane, requestId=x}
   ❯ ./register.tsx calls: $.process.run (via x), $.tool.register, $.ui.open`
 
 /** A fake engine: commands, usage, the plugin CLI and each plugin's hooks.json. */
-function engine(on: On, below: unknown = { type: 'Text', children: [''] }) {
+function engine(on: On, below: unknown = { type: 'Text', children: [''] }, language?: string) {
   const runs: string[][] = []
   const ran: string[] = []
   const panes: string[] = []
@@ -55,6 +55,7 @@ function engine(on: On, below: unknown = { type: 'Text', children: [''] }) {
   })
   on('env.get', ($, e) => ({ value: (e as { name?: string }).name === 'HOME' ? '/home/user' : undefined }) as never)
   on('fs.exists', () => ({ value: false }) as never)
+  on('fs.write', () => ({ value: undefined }) as never)
   on('fs.read', ($, e) => {
     const path = String((e as { path: string }).path)
     if (path.endsWith('known_marketplaces.json'))
@@ -69,7 +70,7 @@ function engine(on: On, below: unknown = { type: 'Text', children: [''] }) {
     if (path.endsWith('installed_plugins.json')) return { value: JSON.stringify({ plugins: { 'savvy-progress@claude-kit': [{ gitCommitSha: '272a877f39b6' }] } }) } as never
     return { value: path.includes('savvy') || path.includes('filetree') ? '{"modules":["./register.tsx"]}' : '{"hooks":{}}' } as never
   })
-  on('settings.read', () => ({ value: { enabledPlugins: { 'cc-plugin-you-should-know@builtin': true } } }) as never)
+  on('settings.read', () => ({ value: { enabledPlugins: { 'cc-plugin-you-should-know@builtin': true }, language } }) as never)
   on('process.run', ($, e) => {
     const argv = (e as { argv: string[] }).argv
     runs.push(argv)
@@ -212,7 +213,7 @@ test('the panel: tabs, cards with ON/OFF, capabilities and pin; toggling uses th
     expect(text).toContain('filetree')
     expect(text).toContain('cc-plugin-you-should-know')
     expect(text).toContain('runs commands')
-    expect(text).toContain('@272a877')
+    expect(text).toContain('pinned at 272a877')
     expect(text).toContain('3 of 3 active')
     expect(text).not.toContain('codex')
     // No Cockpit sections, gauges or per-mod section buttons.
@@ -343,6 +344,13 @@ test('pure logic: sources, listed versions, version order, changed files', () =>
   expect(compareVersions('1.2.0', '1.2')).toBe(0)
   expect(compareVersions('v0.9', '1.0.0')).toBe(-1)
   expect(changedFiles(' M a\n?? b\n\n')).toBe(2)
+  expect(changedList(' M a.ts\nA  b.ts\n?? c.ts\n D d.ts\nR  old.ts -> new.ts\n\n')).toEqual([
+    { status: 'M', path: 'a.ts' },
+    { status: 'A', path: 'b.ts' },
+    { status: '??', path: 'c.ts' },
+    { status: 'D', path: 'd.ts' },
+    { status: 'R', path: 'new.ts' },
+  ])
 })
 
 test('descripción: siempre la del plugin.json del mod (sin el nombre repetido), nunca una nuestra', () => {
@@ -375,8 +383,8 @@ for (const [language, item, desc, equipped] of [
   ['es', 'Mod Épico', 'Progress bar and an agents panel', 'Equipado'],
   ['en', 'Epic Mod', 'Progress bar and an agents panel', 'Equipped'],
 ] as const) {
-  test(`any user, ${language}: each card shows the mod's own description and rarity in the language's word order`, { options: { language } }, async ($, on) => {
-    engine(on)
+  test(`any user, ${language}: each card shows the mod's own description and rarity in the language's word order`, async ($, on) => {
+    engine(on, undefined, language)
     await start($)
     await $.command.run({ command: 'loadout' } as never)
     const pane = await $.ui.mount({ ...PANE, surface: 'terminal' })
@@ -388,6 +396,51 @@ for (const [language, item, desc, equipped] of [
     // A plain plugin's card, on the Plugins tab, shows its own description too.
     await pane.press({ key: 'tab-plugins' })
     expect(JSON.stringify(await pane.drawn())).toContain('Use Codex from Claude Code')
+    await pane.unmount()
+  })
+}
+
+for (const [surface, language, less, tail] of [
+  ['terminal', 'en', 'Less', 'delegate tasks. It also runs adversarial reviews of your changes.'],
+  ['desktop', 'es', 'Menos', 'delegate tasks. It also runs adversarial reviews of your changes.'],
+] as const) {
+  test(`a long description unfolds to its full text and folds back (${surface}, ${language})`, async ($, on) => {
+    engine(on, undefined, language)
+    await start($)
+    await $.command.run({ command: 'loadout' } as never)
+    const pane = await $.ui.mount({ ...PANE, surface })
+    await pane.press({ key: 'tab-plugins' })
+    expect(JSON.stringify(await pane.drawn())).not.toContain(`▴ ${less}`)
+    await pane.press({ key: 'about-codex@openai-codex' })
+    let text = JSON.stringify(await pane.drawn())
+    expect(text).toContain(tail)
+    expect(text).toContain(`▴ ${less}`)
+    await pane.press({ key: 'about-codex@openai-codex' })
+    text = JSON.stringify(await pane.drawn())
+    expect(text).not.toContain(`▴ ${less}`)
+    expect(text).toContain('▸')
+    await pane.unmount()
+  })
+}
+
+for (const [language, modified, backup] of [
+  ['en', 'modified', 'Backup'],
+  ['es', 'modificado', 'Respaldo'],
+] as const) {
+  test(`your changes to a pinned mod can be listed and explained (${language})`, async ($, on) => {
+    const { prompts } = engine(on, undefined, language)
+    await start($)
+    await $.command.run({ command: 'loadout' } as never)
+    const pane = await $.ui.mount({ ...PANE, surface: 'terminal' })
+    await pane.press({ key: 'lo-check' })
+    expect(JSON.stringify(await pane.drawn())).not.toContain('hooks/register.tsx')
+    await pane.press({ key: 'changes-savvy-progress@claude-kit' })
+    const text = JSON.stringify(await pane.drawn())
+    expect(text).toContain(`${modified} plugins/savvy-progress/hooks/register.tsx`)
+    expect(text).toContain(`${modified} plugins/savvy-progress/README.md`)
+    expect(text).toContain(backup)
+    await pane.press({ key: 'explain-savvy-progress@claude-kit' })
+    expect(prompts.at(-1)).toContain('git -C /pin/claude-kit')
     await pane.unmount()
   })
 }

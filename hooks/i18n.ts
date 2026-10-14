@@ -1,5 +1,5 @@
 /**
- * Loadout's words in English and Spanish. `auto` follows Claude Code's `language` setting, then the locale.
+ * Loadout's words in English and Spanish, picked by Claude Code's `language` setting, then the locale (nothing to configure).
  */
 export type Lang = 'en' | 'es'
 
@@ -18,7 +18,6 @@ const EN = {
   refresh: 'Refresh',
   checkAll: 'Check updates',
   builtin: 'built-in',
-  pinned: 'pinned',
   loading: 'Loading your loadout…',
   emptyPlugins: 'No classic plugins.',
   active: (on: number, total: number) => `${on} of ${total} active`,
@@ -54,6 +53,12 @@ const EN = {
   behind: (n: number) => `↑ ${n} new ${n === 1 ? 'change' : 'changes'} from its author`,
   newVersion: (v: string) => `↑ v${v} available`,
   yourChanges: (n: number) => `✎ Your changes: ${n} ${n === 1 ? 'file' : 'files'} · kept when it updates`,
+  pinnedAt: (sha: string) => `Local copy pinned at ${sha}: you can edit it, and updates come only when you approve them`,
+  fileStatus: (code: string) => ({ M: 'modified', A: 'added', D: 'deleted', '??': 'new', R: 'renamed' })[code === '??' ? '??' : code.charAt(0)] ?? code,
+  patchAt: (p: string) => `Backup: ${p}`,
+  explainChanges: 'Explain my changes',
+  askExplain: (label: string, dir: string) =>
+    `Loadout: explain in a few lines, for a non-programmer, what my own uncommitted changes to the mod «${label}» do. Run \`git -C ${dir} status\` and \`git -C ${dir} diff HEAD\` and read them; do not change anything.`,
   checking: 'Checking for updates…',
   upToDate: 'Everything is up to date',
   updatesFound: (n: number) => (n === 1 ? '1 update available' : `${n} updates available`),
@@ -122,7 +127,6 @@ const ES: typeof EN = {
   refresh: 'Recargar',
   checkAll: 'Buscar actualizaciones',
   builtin: 'integrado',
-  pinned: 'fijado',
   loading: 'Cargando tu loadout…',
   emptyPlugins: 'Sin plugins clásicos.',
   active: (on, total) => `${on} de ${total} activos`,
@@ -157,6 +161,12 @@ const ES: typeof EN = {
   behind: n => `↑ ${n} ${n === 1 ? 'cambio nuevo' : 'cambios nuevos'} de su autor`,
   newVersion: v => `↑ v${v} disponible`,
   yourChanges: n => `✎ Tus cambios: ${n} ${n === 1 ? 'archivo' : 'archivos'} · se conservan al actualizar`,
+  pinnedAt: sha => `Copia local fija en ${sha}: puedes editarla, y solo se actualiza cuando tú lo apruebas`,
+  fileStatus: code => ({ M: 'modificado', A: 'agregado', D: 'borrado', '??': 'nuevo', R: 'renombrado' })[code === '??' ? '??' : code.charAt(0)] ?? code,
+  patchAt: p => `Respaldo: ${p}`,
+  explainChanges: 'Explicar mis cambios',
+  askExplain: (label, dir) =>
+    `Loadout: explícame en pocas líneas, para alguien que no programa, qué hacen mis cambios sin commitear al mod «${label}». Corre \`git -C ${dir} status\` y \`git -C ${dir} diff HEAD\` y léelos; no cambies nada.`,
   checking: 'Buscando actualizaciones…',
   upToDate: 'Todo está al día',
   updatesFound: n => (n === 1 ? '1 actualización disponible' : `${n} actualizaciones disponibles`),
@@ -214,7 +224,7 @@ export type Words = typeof EN
 
 export const words = (lang: Lang): Words => (lang === 'es' ? ES : EN)
 
-/** `auto`: Claude Code's `language` setting, then LANG/LC_ALL; English otherwise. */
+/** Claude Code's `language` setting, then LANG/LC_ALL; English otherwise. An explicit 'en' or 'es' first wins (tests). */
 export function pickLang(option: unknown, settingsLanguage: unknown, locale: string | null): Lang {
   if (option === 'en' || option === 'es') return option
   const s = typeof settingsLanguage === 'string' ? settingsLanguage.toLowerCase() : ''

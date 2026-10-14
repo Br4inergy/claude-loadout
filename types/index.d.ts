@@ -34,6 +34,8 @@ export type UpdateInfo = {
   latest: string | null
   /** Files you changed in a pinned clone: kept and re-applied on update. */
   changed: number
+  /** Your changed files in a pinned clone, from git status. */
+  files: { status: string; path: string }[]
   /** Where your changes are backed up as a patch, when there are any. */
   patch: string | null
   /** The pinned clone's folder, or the refreshed marketplace's. */
@@ -64,6 +66,8 @@ declare module 'claude-code' {
       expanded: string | null
       /** The card whose long description is unfolded. */
       aboutOpen: string | null
+      /** The card whose list of your changes is unfolded. */
+      changesOpen: string | null
       /** Id of the mod with an action running. */
       busy: string | null
       /** Which list the panel shows. */

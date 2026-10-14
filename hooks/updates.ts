@@ -47,6 +47,18 @@ export function compareVersions(a: string, b: string): number {
   return 0
 }
 
+/** The files `git status --porcelain` lists: a status code and a path (the new one for a rename). */
+export function changedList(porcelain: string): { status: string; path: string }[] {
+  return porcelain
+    .split('\n')
+    .filter(l => l.trim() !== '')
+    .map(l => {
+      const rest = l.slice(3)
+      const arrow = rest.lastIndexOf(' -> ')
+      return { status: l.slice(0, 2).trim(), path: arrow >= 0 ? rest.slice(arrow + 4) : rest }
+    })
+}
+
 /** Files `git status --porcelain` lists as changed. */
 export const changedFiles = (porcelain: string) => porcelain.split('\n').filter(l => l.trim() !== '').length
 

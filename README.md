@@ -97,10 +97,10 @@ All under `~/.claude/loadout/`:
 | `patches/` | Backups of your own changes to pinned mods |
 | `pinned/` | Local clones made by **Pin** |
 
-## Settings
+## Language
 
-`language`: `auto` (follows Claude Code's language setting, then your system's locale), `en` or `es`. Works on
-macOS, Linux and Windows (it reads `HOME`, or `USERPROFILE` on Windows). Rarities read
+Loadout speaks English or Spanish and follows Claude Code's language setting, then your system's locale. There is
+nothing to configure. Works on macOS, Linux and Windows (it reads `HOME`, or `USERPROFILE` on Windows). Rarities read
 "Epic Mod" in English and "Mod Épico" in Spanish.
 
 ## Development

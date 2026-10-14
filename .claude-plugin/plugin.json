@@ -1,25 +1,12 @@
 {
   "name": "loadout",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Your Claude Code mods as an RPG inventory: see what each mod's code can really do, keep unaudited mods and versions from running, and update safely without losing your own changes.",
   "author": {
     "name": "Br4inergy",
     "url": "https://github.com/Br4inergy"
   },
   "types": "./types/index.d.ts",
-  "userConfig": {
-    "language": {
-      "type": "string",
-      "title": "Language",
-      "description": "auto follows Claude Code's language setting, then the system locale",
-      "default": "auto",
-      "options": [
-        "auto",
-        "en",
-        "es"
-      ]
-    }
-  },
   "homepage": "https://github.com/Br4inergy/claude-loadout",
   "repository": "https://github.com/Br4inergy/claude-loadout",
   "license": "MIT"

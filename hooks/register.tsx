@@ -26,13 +26,14 @@ import { pickLang, words } from './i18n'
 import type { Lang } from './i18n'
 import { costOf } from './pricing'
 import type { Usage } from './pricing'
-import { changedFiles, compareVersions, hasUpdate, listedVersion, sourceOf } from './updates'
+import { changedFiles, changedList, compareVersions, hasUpdate, listedVersion, sourceOf } from './updates'
 
 const mods = atom({ plugin: 'loadout', key: 'mods' } as const, [])
 const commands = atom({ plugin: 'loadout', key: 'commands' } as const, [])
 const confirm = atom({ plugin: 'loadout', key: 'confirm' } as const, null)
 const expanded = atom({ plugin: 'loadout', key: 'expanded' } as const, null)
 const aboutOpen = atom({ plugin: 'loadout', key: 'aboutOpen' } as const, null)
+const changesOpen = atom({ plugin: 'loadout', key: 'changesOpen' } as const, null)
 /** Longer than this, a description shows one line and unfolds on a press. */
 const ABOUT_FOLD = 90
 const busy = atom({ plugin: 'loadout', key: 'busy' } as const, null)
@@ -264,7 +265,7 @@ async function checkUpdates($: EngineInterface, quiet: boolean) {
             })
           }
         }
-        found[m.id] = { source: 'folder', behind, latest: null, changed, patch, dir: src.dir, repo: null, ref }
+        found[m.id] = { source: 'folder', behind, latest: null, changed, files: status?.exitCode === 0 ? changedList(status.stdout) : [], patch, dir: src.dir, repo: null, ref }
       } else if (src.kind === 'github') {
         if (!done.has(src.marketplace)) {
           await $.process.run([bin, 'plugin', 'marketplace', 'update', src.marketplace], { timeoutMs: 60_000 }).catch(() => null)
@@ -272,7 +273,7 @@ async function checkUpdates($: EngineInterface, quiet: boolean) {
         }
         const listed = listedVersion(await $.fs.read(`${src.dir}/.claude-plugin/marketplace.json`).catch(() => ''), name)
         const latest = listed && m.version && compareVersions(listed, m.version) > 0 ? listed : null
-        found[m.id] = { source: 'github', behind: 0, latest, changed: 0, patch: null, dir: src.dir, repo: src.repo || null, ref: null }
+        found[m.id] = { source: 'github', behind: 0, latest, changed: 0, files: [], patch: null, dir: src.dir, repo: src.repo || null, ref: null }
       }
     }
     await update($, updates, () => found)
@@ -348,7 +349,7 @@ async function meter($: EngineInterface, plugin: string, model: string, result: 
 
 // ── hooks ───────────────────────────────────────────────────────────────────
 
-export const register: Register = (on, options) => {
+export const register: Register = on => {
   // The audit gate: a mod you have not approved, in this exact version, never joins the session.
   on('plugin.register', { tier: 'user' }, async ($, e, next) => {
     if (e.name === 'loadout') return next(e)
@@ -369,7 +370,7 @@ export const register: Register = (on, options) => {
       const held = await read($, blocked)
       if (held.some(b => !installed.includes(b.name))) await update($, blocked, list => list.filter(b => installed.includes(b.name)))
       const locale = (await $.env.get('LC_ALL').catch(() => null)) || (await $.env.get('LANG').catch(() => null)) || null
-      lang = pickLang((options as { language?: unknown } | undefined)?.language, settings.language, locale)
+      lang = pickLang(undefined, settings.language, locale)
       const seen = asNames(await $.store.get('bandsSeen').catch(() => undefined))
       const hidden = asNames(await $.store.get('hiddenBands').catch(() => undefined))
       await update($, bands, () => seen)
@@ -474,6 +475,7 @@ export const register: Register = (on, options) => {
     const pending = await read($, confirm)
     const open = await read($, expanded)
     const unfolded = await read($, aboutOpen)
+    const changesUnfolded = await read($, changesOpen)
     const working = await read($, busy)
     const which = await read($, tab)
     const found = await read($, caps)
@@ -526,9 +528,16 @@ export const register: Register = (on, options) => {
           {m.about !== '' &&
             (m.about.length <= ABOUT_FOLD ? (
               <Text color="warning" italic dimColor wrap="wrap">{`“${m.about}”`}</Text>
+            ) : unfolded === m.id ? (
+              <Box flexDirection="column">
+                <Text color="warning" italic dimColor wrap="wrap">{`“${m.about}”`}</Text>
+                <Button key={`about-${m.id}`} plain onPress={() => void update($, aboutOpen, x => (x === m.id ? null : m.id))}>
+                  <Text dimColor>{`▴ ${w.less}`}</Text>
+                </Button>
+              </Box>
             ) : (
               <Button key={`about-${m.id}`} plain onPress={() => void update($, aboutOpen, x => (x === m.id ? null : m.id))}>
-                <Text color="warning" italic dimColor wrap={unfolded === m.id ? 'wrap' : 'truncate-end'}>{`${unfolded === m.id ? '▾' : '▸'} “${m.about}”`}</Text>
+                <Text color="warning" italic dimColor wrap="truncate-end">{`▸ “${m.about}”`}</Text>
               </Button>
             ))}
           {mine.length > 0 && (
@@ -540,7 +549,7 @@ export const register: Register = (on, options) => {
               ))}
             </Text>
           )}
-          {m.pin && <Text dimColor>{`⌁ ${w.pinned} @${m.pin}`}</Text>}
+          {m.pin && <Text dimColor wrap="wrap">{`⌁ ${w.pinnedAt(m.pin)}`}</Text>}
           {up?.requested ? (
             <Text color="claude">{`↻ ${w.updating}`}</Text>
           ) : (
@@ -549,7 +558,22 @@ export const register: Register = (on, options) => {
               {up?.latest && <Text color="claude" bold>{w.newVersion(up.latest)}</Text>}
             </Box>
           )}
-          {up && up.changed > 0 && <Text dimColor wrap="wrap">{w.yourChanges(up.changed)}</Text>}
+          {up && up.changed > 0 && (
+            <Button key={`changes-${m.id}`} plain onPress={() => void update($, changesOpen, x => (x === m.id ? null : m.id))}>
+              <Text dimColor wrap="wrap">{`${changesUnfolded === m.id ? '▾' : '▸'} ${w.yourChanges(up.changed)}`}</Text>
+            </Button>
+          )}
+          {up && up.changed > 0 && changesUnfolded === m.id && (
+            <Box flexDirection="column">
+              <Box flexDirection="column" paddingLeft={2}>
+                {up.files.map(f => (
+                  <Text key={`file-${m.id}-${f.path}`} dimColor wrap="truncate-start">{`${w.fileStatus(f.status)} ${f.path}`}</Text>
+                ))}
+              </Box>
+              {up.patch && <Text dimColor wrap="wrap">{w.patchAt(up.patch)}</Text>}
+              <Button key={`explain-${m.id}`} label={w.explainChanges} onPress={() => void $.prompt.submit({ text: w.askExplain(m.label, up.dir ?? '') })} />
+            </Box>
+          )}
           {sp && sp.calls > 0 && (
             <Text color={sp.usd >= 1 ? 'warning' : undefined} dimColor={sp.usd < 1} wrap="wrap">
               {w.spent(sp.calls, sp.tokens >= 1000 ? `${Math.round(sp.tokens / 1000)}k` : String(sp.tokens), sp.usd.toFixed(2))}
