@@ -34,8 +34,6 @@ const confirm = atom({ plugin: 'loadout', key: 'confirm' } as const, null)
 const expanded = atom({ plugin: 'loadout', key: 'expanded' } as const, null)
 const aboutOpen = atom({ plugin: 'loadout', key: 'aboutOpen' } as const, null)
 const changesOpen = atom({ plugin: 'loadout', key: 'changesOpen' } as const, null)
-/** Longer than this, a description shows one line and unfolds on a press. */
-const ABOUT_FOLD = 90
 const busy = atom({ plugin: 'loadout', key: 'busy' } as const, null)
 const tab = atom({ plugin: 'loadout', key: 'tab' } as const, 'mods')
 const caps = atom({ plugin: 'loadout', key: 'caps' } as const, {})
@@ -153,6 +151,7 @@ async function loadMods($: EngineInterface) {
     const bin = await claudeBin($)
     const run = await $.process.run([bin, 'plugin', 'list', '--json'], { timeoutMs: 30_000 })
     const listed = JSON.parse(run.stdout) as { id: string; version?: string; enabled?: boolean; installPath?: string }[]
+    const known = await $.fs.read(`${await home($)}/.claude/plugins/known_marketplaces.json`).catch(() => '')
     const pins = pinsOf(await $.fs.read(`${await home($)}/.claude/plugins/installed_plugins.json`).catch(() => ''))
     const rows: ModRow[] = []
     for (const p of listed) {
@@ -169,7 +168,11 @@ async function loadMods($: EngineInterface) {
       })()
       const version = typeof own.version === 'string' && own.version ? own.version : p.version
       const description = typeof own.description === 'string' ? own.description : undefined
-      rows.push(toRow({ ...p, version, description }, typeof hooks === 'string' && hooks.includes('"modules"'), lang, pins[p.id] ?? null))
+      const src = sourceOf(p.id, known)
+      rows.push({
+        ...toRow({ ...p, version, description }, typeof hooks === 'string' && hooks.includes('"modules"'), lang, pins[p.id] ?? null),
+        origin: { kind: src.kind, repo: src.kind === 'github' ? src.repo || null : null },
+      })
     }
     const settings = (await $.settings.read().catch(() => ({}))) as { enabledPlugins?: Record<string, boolean> }
     for (const id of builtinIds(settings.enabledPlugins)) {
@@ -307,6 +310,9 @@ async function openPane($: EngineInterface) {
     const last = await $.store.get('lastCheck').catch(() => undefined)
     if (typeof last !== 'number' || Date.now() - last > CHECK_EVERY_MS) await checkUpdates($, true)
   })
+  // Every card opens folded: one line of description, your changes closed.
+  await update($, aboutOpen, () => null)
+  await update($, changesOpen, () => null)
   await $.ui.open({ id: PANE, title: 'Loadout', closeOnEscape: true })
   await update($, paneUp, () => true)
 }
@@ -451,7 +457,7 @@ export const register: Register = on => {
     const news = Object.values(await read($, updates)).filter(u => hasUpdate(u) && !u.requested).length
     return (
       <Box flexDirection="column">
-        <Box key="lo-row" gap={1} justifyContent="flex-end" alignItems="center">
+        <Box key="lo-row" gap={1} justifyContent="flex-end" alignItems="center" marginBottom={1}>
           {held.length > 0 && <Button key="lo-blocked" variant="primary" label={`⚠ ${w.blocked(held.length)}`} onPress={() => void showPane($)} />}
           {news > 0 && <Button key="lo-updates" label={`↑ ${w.updatesFound(news)}`} onPress={() => void showPane($)} />}
           <Button key="lo-open" hotkey="l" variant={up ? 'primary' : undefined} label={`⚙ ${w.loadout}`} onPress={() => void togglePane($)} />
@@ -526,9 +532,7 @@ export const register: Register = on => {
             <Text dimColor>{m.builtin ? ` · ${w.builtin}` : m.version ? ` · ${w.level(m.version)}` : ''}</Text>
           </Text>
           {m.about !== '' &&
-            (m.about.length <= ABOUT_FOLD ? (
-              <Text color="warning" italic dimColor wrap="wrap">{`“${m.about}”`}</Text>
-            ) : unfolded === m.id ? (
+            (unfolded === m.id ? (
               <Box flexDirection="column">
                 <Text color="warning" italic dimColor wrap="wrap">{`“${m.about}”`}</Text>
                 <Button key={`about-${m.id}`} plain onPress={() => void update($, aboutOpen, x => (x === m.id ? null : m.id))}>
@@ -549,7 +553,8 @@ export const register: Register = on => {
               ))}
             </Text>
           )}
-          {m.pin && <Text dimColor wrap="wrap">{`⌁ ${w.pinnedAt(m.pin)}`}</Text>}
+          {m.origin?.kind === 'github' && <Text dimColor wrap="wrap">{`⌂ ${w.fromStore(m.origin.repo)}`}</Text>}
+          {m.origin?.kind === 'folder' && <Text dimColor wrap="wrap">{`⌂ ${m.pin ? w.fromLocalGit(m.pin) : w.fromFolder}`}</Text>}
           {up?.requested ? (
             <Text color="claude">{`↻ ${w.updating}`}</Text>
           ) : (
@@ -567,7 +572,7 @@ export const register: Register = on => {
             <Box flexDirection="column">
               <Box flexDirection="column" paddingLeft={2}>
                 {up.files.map(f => (
-                  <Text key={`file-${m.id}-${f.path}`} dimColor wrap="truncate-start">{`${w.fileStatus(f.status)} ${f.path}`}</Text>
+                  <Text key={`file-${m.id}-${f.path}`} dimColor wrap="truncate-start">{`${w.fileStatus(f.status)} · ${f.path.split('/').pop() ?? f.path}`}</Text>
                 ))}
               </Box>
               {up.patch && <Text dimColor wrap="wrap">{w.patchAt(up.patch)}</Text>}

@@ -9,13 +9,13 @@ until you approve it, usually after Claude audits it for you.
 
 ╔══════════════════════════════════════════════╗
 ║ ⚙ Loadout                         ◆ Equipped ║   ← orange: Legendary
-║ Legendary Mod · Item level 0.5.1             ║
+║ Legendary Mod · v0.5.1                       ║
 ║ ▸ “Manage your Claude Code mods safely. Tog…”║
 ║ +runs commands  +writes files  +own panel    ║
 ╚══════════════════════════════════════════════╝
 ╔══════════════════════════════════════════════╗
 ║ ◇ repo-guard                      ◆ Equipped ║   ← purple: Epic
-║ Epic Mod · Item level 0.2.1                  ║
+║ Epic Mod · v0.2.1                            ║
 ║ ▸ “Blocks writes to repos you only read. Wa…”║
 ║ +runs commands  +writes files  +watches tool ║
 ║ calls  +own panel                            ║
@@ -23,14 +23,15 @@ until you approve it, usually after Claude audits it for you.
 ╚══════════════════════════════════════════════╝
 ╭──────────────────────────────────────────────╮
 │ ◇ filetree                        ◆ Equipped │   ← blue: Rare
-│ Rare Mod · Item level 0.2.25                 │
-│ “An IDE-style file tree for Claude Code”     │
+│ Rare Mod · v0.2.25                           │
+│ ⌂ Installed from a marketplace (owner/repo)  │
+│ ▸ “An IDE-style file tree for Claude Code”   │
 │ +writes files  +own panel                    │
 │ [ Open ↗ ]  [ More ▾ ]                       │
 ╰──────────────────────────────────────────────╯
 ╭──────────────────────────────────────────────╮
 │ ◇ some-mod                          ◇ Equip  │   ← grey: Poor (off)
-│ Poor Mod · Item level 1.0.0                  │
+│ Poor Mod · v1.0.0                            │
 ╰──────────────────────────────────────────────╯
 ```
 
@@ -45,8 +46,9 @@ Then press **⚙ Loadout** in the band above the prompt, or type `/loadout`. It 
 
 ## What it does
 
-- **Inventory panel.** Every mod and plugin you have installed, with an Equip / Equipped switch, its version, its own
-  description (from its `plugin.json`; a long one folds into a single line you can unfold), what its code can do, what
+- **Inventory panel.** Every mod and plugin you have installed, with an Equip / Equipped switch, its version, where it
+  was installed from (a marketplace, or a folder or git copy on your computer), its own description (from its
+  `plugin.json`, folded into one line you can unfold), what its code can do, what
   it spent on the model this session, and Uninstall (it asks you to confirm).
 - **Nothing hand-written.** Each card shows the plugin's own name and the description from its own `plugin.json`,
   exactly what its author wrote. Loadout keeps no list of mods it knows: everything on a card is read from the mod.
@@ -60,8 +62,9 @@ Then press **⚙ Loadout** in the band above the prompt, or type `/loadout`. It 
   audit**. Every block is logged.
 - **Safe updates.** It checks for new versions (the author's new commits for a pinned clone, the marketplace version
   for a GitHub install). **Audit & update** has Claude review the change before installing it. If you changed a mod
-  yourself, Loadout backs up your changes and keeps them when the author's update lands. **Pin** turns a GitHub install
-  into a local clone you can edit.
+  yourself, Loadout backs up your changes and keeps them when the author's update lands. **Pin** turns a marketplace install
+  into a git copy on your computer that you can edit. Your own changes unfold into the list of files, with an
+  **Explain my changes** button.
 - **Bands above the prompt.** Mods that draw a band above the prompt show under Loadout's own band, and you can show or
   hide each one.
 

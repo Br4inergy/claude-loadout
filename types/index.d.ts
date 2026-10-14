@@ -6,6 +6,8 @@ export type Cap = 'cmd' | 'write' | 'net' | 'prompt' | 'model' | 'tools' | 'gate
 /** One installed mod or plugin as the panel shows it. */
 export type ModRow = {
   id: string
+  /** Where it was installed from: a marketplace on GitHub, a folder (a git copy or not) on this computer, or other. */
+  origin?: { kind: 'github' | 'folder' | 'other'; repo: string | null }
   label: string
   enabled: boolean
   /** true when it ships function hooks (a mod with UI), false for a classic plugin. */
