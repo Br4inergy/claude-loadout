@@ -1,6 +1,7 @@
-# ⚔ Loadout — the safe plugin manager for Claude Code
+# ⚔ Loadout — Mod Manager for Claude Code
 
-**Install Claude Code plugins and mods without running code nobody reviewed.** Loadout puts an audit gate in front of
+**Loadout is a mod manager for Claude Code: install, update and manage your plugins and mods without running code nobody
+reviewed.** Loadout puts an audit gate in front of
 every mod: a new mod, or a new version of one you already trust, stays blocked until Claude reviews its code and you
 approve it. It tells you when updates are out, audits them before they install, and keeps the changes you made yourself.
 All of it from one inventory panel inside Claude Code.
