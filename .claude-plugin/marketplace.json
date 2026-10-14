@@ -1,0 +1,23 @@
+{
+  "name": "claude-loadout",
+  "owner": {
+    "name": "Br4inergy",
+    "url": "https://github.com/Br4inergy"
+  },
+  "metadata": {
+    "description": "Loadout: your Claude Code mods as an RPG inventory, with an audit gate and safe updates.",
+    "version": "0.6.0"
+  },
+  "plugins": [
+    {
+      "name": "loadout",
+      "description": "Your Claude Code mods as an RPG inventory: see what each mod's code can really do, keep unaudited mods and versions from running, and update safely without losing your own changes.",
+      "version": "0.6.0",
+      "author": {
+        "name": "Br4inergy"
+      },
+      "source": "./",
+      "license": "MIT"
+    }
+  ]
+}
