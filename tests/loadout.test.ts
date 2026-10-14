@@ -4,7 +4,7 @@ import type { Engine } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
 import { builtinIds, capsOf, isSafeId, openCommandFor, pinsOf, rarityOf, sortRows, toRow } from '../hooks/catalogo'
-import { isApproved, usesText } from '../hooks/gate'
+import { isApproved, stillHeld, usesText } from '../hooks/gate'
 import { pickLang, words } from '../hooks/i18n'
 import { costOf } from '../hooks/pricing'
 import { changedFiles, changedList, compareVersions, listedVersion, sourceOf } from '../hooks/updates'
@@ -211,10 +211,10 @@ test('the panel: tabs, cards with ON/OFF, capabilities and pin; toggling uses th
     const text = JSON.stringify(await ui.drawn())
     expect(text).toContain('savvy-progress')
     expect(text).toContain('filetree')
-    expect(text).toContain('cc-plugin-you-should-know')
+    expect(text).not.toContain('cc-plugin-you-should-know')
     expect(text).toContain('runs commands')
     expect(text).toContain('git copy on this computer (commit 272a877)')
-    expect(text).toContain('3 of 3 active')
+    expect(text).toContain('2 of 2 active')
     expect(text).not.toContain('codex')
     // No Cockpit sections, gauges or per-mod section buttons.
     expect(text).not.toContain('"Svg"')
@@ -477,4 +477,21 @@ test('descriptions open folded, and opening the panel folds them again', async (
   const again = await $.ui.mount({ ...PANE, surface: 'desktop' })
   expect(JSON.stringify(await again.drawn())).not.toContain('▴')
   await again.unmount()
+})
+
+test('a held version leaves once approved, or once another version of that mod is installed in its place', () => {
+  const held = [
+    { name: 'repo-guard', version: '0.2.0' },
+    { name: 'filetree', version: '0.2.24' },
+    { name: 'newmod', version: '1.0.0' },
+  ]
+  const installed = [
+    { name: 'repo-guard', version: '0.2.1' },
+    { name: 'filetree', version: '0.2.24' },
+    { name: 'newmod', version: '1.0.0' },
+  ]
+  expect(stillHeld(held, {}, installed).map(b => b.name)).toEqual(['filetree', 'newmod'])
+  expect(stillHeld(held, { newmod: { version: '1.0.0' } }, installed).map(b => b.name)).toEqual(['filetree'])
+  // A mod whose version is unknown is never taken for replaced.
+  expect(stillHeld(held, {}, [{ name: 'repo-guard', version: '' }]).map(b => b.name)).toEqual(['repo-guard', 'filetree', 'newmod'])
 })

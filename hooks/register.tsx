@@ -21,7 +21,7 @@ import type { Approval, Blocked, Cap, ModRow, UpdateInfo } from '../types'
 import { mergeSeen, splitBands } from './bandas'
 import type { Link } from './bandas'
 import { RARITY_COLOR, builtinIds, capsOf, isSafeId, openCommandFor, pinsOf, rarityOf, shortName, sortRows, toRow } from './catalogo'
-import { isApproved, usesText } from './gate'
+import { isApproved, stillHeld, usesText } from './gate'
 import { pickLang, words } from './i18n'
 import type { Lang } from './i18n'
 import { costOf } from './pricing'
@@ -135,9 +135,12 @@ async function logBlock($: EngineInterface, b: Blocked) {
 async function recheck($: EngineInterface) {
   const approved = await readApproved($)
   const before = await read($, blocked)
-  const still = before.filter(b => !isApproved(approved, b.name, b.version))
-  await update($, blocked, () => still)
-  if (still.length < before.length) {
+  const installed = (await read($, mods)).map(m => ({ name: shortName(m.id), version: m.version }))
+  const nowApproved = before.filter(b => isApproved(approved, b.name, b.version))
+  const still = stillHeld(before, approved, installed)
+  if (still.length < before.length) await update($, blocked, () => still)
+  // Only an approval needs the mod loaded now; a replaced version is just forgotten.
+  if (nowApproved.length > 0) {
     toast($, words(lang).approvedReload)
     await $.command.run({ command: 'reload-plugins' }).catch(() => undefined)
   }
@@ -174,9 +177,18 @@ async function loadMods($: EngineInterface) {
         origin: { kind: src.kind, repo: src.kind === 'github' ? src.repo || null : null },
       })
     }
-    const settings = (await $.settings.read().catch(() => ({}))) as { enabledPlugins?: Record<string, boolean> }
+    // Built-ins ship inside Claude Code and cannot be uninstalled: list only the ones turned on, read from the file on
+    // disk (the session's own copy of the settings is the one it started with).
+    const onDisk = await $.fs.read(`${await home($)}/.claude/settings.json`).catch(() => '')
+    const settings = (() => {
+      try {
+        return JSON.parse(onDisk) as { enabledPlugins?: Record<string, boolean> }
+      } catch {
+        return {}
+      }
+    })()
     for (const id of builtinIds(settings.enabledPlugins)) {
-      if (!rows.some(r => r.id === id)) rows.push(toRow({ id, enabled: settings.enabledPlugins?.[id] === true }, true, lang))
+      if (settings.enabledPlugins?.[id] === true && !rows.some(r => r.id === id)) rows.push(toRow({ id, enabled: true }, true, lang))
     }
     await update($, mods, () => sortRows(rows))
     // What each mod's code can do, read the way the engine reads it.
@@ -307,6 +319,7 @@ async function askSafeUpdate($: EngineInterface, row: ModRow, info: UpdateInfo |
 /** Re-reads the mods and, at most every 6 hours, looks for updates; then opens the panel (or brings it forward). */
 async function openPane($: EngineInterface) {
   void loadMods($).then(async () => {
+    await recheck($)
     const last = await $.store.get('lastCheck').catch(() => undefined)
     if (typeof last !== 'number' || Date.now() - last > CHECK_EVERY_MS) await checkUpdates($, true)
   })
