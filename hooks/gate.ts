@@ -22,3 +22,16 @@ export function stillHeld<B extends { name: string; version: string }>(
   const replaced = (b: B) => installed.some(m => m.name === b.name && m.version !== '' && m.version !== b.version)
   return held.filter(b => !isApproved(approved, b.name, b.version) && !replaced(b))
 }
+
+/**
+ * Whether a mod lives in a folder you trust (`trusted.json` → `folders`): your own mods, loaded from your own copy, skip
+ * the gate in any version. Only absolute folders count, matched on whole path segments, and a path with `..` never.
+ */
+export function inTrustedFolder(folders: readonly unknown[], root: string | undefined): boolean {
+  if (!root || !root.startsWith('/') || root.split('/').includes('..')) return false
+  return folders.some(f => {
+    if (typeof f !== 'string' || !f.startsWith('/') || f.split('/').includes('..')) return false
+    const dir = f.replace(/\/+$/, '')
+    return dir !== '' && (root === dir || root.startsWith(`${dir}/`))
+  })
+}

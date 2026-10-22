@@ -22,7 +22,7 @@ import { aboutFolds } from './about'
 import { mergeSeen, splitBands } from './bandas'
 import type { Link } from './bandas'
 import { RARITY_COLOR, builtinIds, capsOf, isSafeId, openCommandFor, pinsOf, rarityOf, shortName, sortRows, toRow } from './catalogo'
-import { isApproved, stillHeld, usesText } from './gate'
+import { inTrustedFolder, isApproved, stillHeld, usesText } from './gate'
 import { pickLang, words } from './i18n'
 import type { Lang } from './i18n'
 import { costOf } from './pricing'
@@ -109,6 +109,18 @@ async function readApproved($: EngineInterface): Promise<Record<string, Approval
     return data.mods ?? {}
   } catch {
     return {}
+  }
+}
+
+// Folders whose mods you trust without an audit (your own): `{ "folders": ["/abs/path"] }`. Written by you, never by Loadout.
+const trustedPath = async ($: EngineInterface) => `${await home($)}/.claude/loadout/trusted.json`
+
+async function readTrustedFolders($: EngineInterface): Promise<unknown[]> {
+  try {
+    const data = JSON.parse(await $.fs.read(await trustedPath($))) as { folders?: unknown }
+    return Array.isArray(data.folders) ? data.folders : []
+  } catch {
+    return []
   }
 }
 
@@ -375,6 +387,7 @@ export const register: Register = on => {
     if (e.name === 'loadout') return next(e)
     const approved = await readApproved($)
     if (isApproved(approved, e.name, e.version)) return next(e)
+    if (inTrustedFolder(await readTrustedFolders($), e.root)) return next(e)
     const b: Blocked = { name: e.name, version: e.version ?? '', root: e.root, caps: capsOf(usesText(e.uses)) }
     await update($, blocked, list => [...list.filter(x => x.name !== b.name), b])
     toast($, words(lang).blockedToast(e.name))

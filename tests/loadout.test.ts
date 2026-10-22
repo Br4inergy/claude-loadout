@@ -4,7 +4,7 @@ import type { Engine } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
 import { builtinIds, capsOf, isSafeId, openCommandFor, pinsOf, rarityOf, sortRows, toRow } from '../hooks/catalogo'
-import { isApproved, stillHeld, usesText } from '../hooks/gate'
+import { inTrustedFolder, isApproved, stillHeld, usesText } from '../hooks/gate'
 import { pickLang, words } from '../hooks/i18n'
 import { costOf } from '../hooks/pricing'
 import { changedFiles, changedList, compareVersions, listedVersion, sourceOf } from '../hooks/updates'
@@ -506,4 +506,15 @@ test('a held version leaves once approved, or once another version of that mod i
   expect(stillHeld(held, { newmod: { version: '1.0.0' } }, installed).map(b => b.name)).toEqual(['filetree'])
   // A mod whose version is unknown is never taken for replaced.
   expect(stillHeld(held, {}, [{ name: 'repo-guard', version: '' }]).map(b => b.name)).toEqual(['repo-guard', 'filetree', 'newmod'])
+})
+
+test('pure logic: a mod in a trusted folder skips the gate, matched on whole folders', () => {
+  const folders = ['/Users/me/mods/']
+  expect(inTrustedFolder(folders, '/Users/me/mods/bob-sesiones')).toBe(true)
+  expect(inTrustedFolder(folders, '/Users/me/mods')).toBe(true)
+  expect(inTrustedFolder(folders, '/Users/me/mods-evil/x')).toBe(false)
+  expect(inTrustedFolder(folders, '/Users/me/mods/../other')).toBe(false)
+  expect(inTrustedFolder(folders, undefined)).toBe(false)
+  expect(inTrustedFolder(['relative/mods', '/', 7], '/Users/me/mods/x')).toBe(false)
+  expect(inTrustedFolder([], '/Users/me/mods/x')).toBe(false)
 })

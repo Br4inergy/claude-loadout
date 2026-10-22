@@ -78,6 +78,19 @@ Then press **⚙ Loadout** in the band above the prompt, or type `/loadout`. It 
 Each card shows only what the mod itself says: its name, the description from its own `plugin.json` and what its code
 can do. Loadout keeps no hand-written list of mods, so it works the same for any mod, yours or anyone else's.
 
+## Your own mods: trusted folders
+
+Mods you write yourself don't need to wait for an audit on every version. List the folders they live in, in
+`~/.claude/loadout/trusted.json`:
+
+```json
+{ "folders": ["/Users/you/code/my-mods"] }
+```
+
+A mod loaded from inside one of those folders (a folder marketplace on your computer) runs in any version, without an
+audit. Only absolute paths count, and Loadout never writes this file: you do. Mods from anywhere else still go through
+the gate, even if they share a name with one of yours.
+
 ## FAQ
 
 **Is it safe to install Claude Code plugins from GitHub or a marketplace?**

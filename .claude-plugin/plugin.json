@@ -1,6 +1,6 @@
 {
   "name": "loadout",
-  "version": "0.7.4",
+  "version": "0.7.5",
   "description": "Mod manager for Claude Code: audits every mod and every update before it runs, keeps your own changes across updates, and shows what each mod's code can really do.",
   "author": {
     "name": "Br4inergy",
