@@ -50,8 +50,8 @@ export type UpdateInfo = {
   repo: string | null
 }
 
-/** A mod the audit gate kept from loading. */
-export type Blocked = { name: string; version: string; root: string; caps: Cap[] }
+/** A mod the audit gate kept from loading. `id` is where it came from, `<name>@<marketplace>`. */
+export type Blocked = { name: string; version: string; root: string; caps: Cap[]; id?: string }
 
 /** One approved mod in ~/.claude/loadout/approved.json. */
 export type Approval = { version: string; by: 'audit' | 'manual'; approvedAt: string }
@@ -90,6 +90,10 @@ declare module 'claude-code' {
       updates: Record<string, UpdateInfo>
       /** Whether an update check is running. */
       checking: boolean
+      /** Mods you trust in any version (`<name>@<marketplace>`), from ~/.claude/loadout/trusted.json. */
+      trusted: string[]
+      /** Id of the mod waiting for a second click to be trusted. */
+      trustConfirm: string | null
     }
   }
 }

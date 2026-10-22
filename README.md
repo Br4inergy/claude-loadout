@@ -35,7 +35,8 @@ off. You can also choose **Allow without audit**, and every block is written to 
 
 Loadout checks for new versions on its own: the marketplace version for a GitHub install, or the author's new commits
 for a copy you pinned. **Audit & update** has Claude review *what changed* before the new version installs. A new
-version is treated like a new mod, so a trusted plugin can't quietly turn into something else.
+version is treated like a new mod, so a plugin you approved can't quietly turn into something else (unless you chose to
+[trust it](#trusted-mods-skip-the-audit-for-authors-you-trust) in every version).
 
 ### 3. ✍️ Your own changes survive updates
 
@@ -78,18 +79,25 @@ Then press **⚙ Loadout** in the band above the prompt, or type `/loadout`. It 
 Each card shows only what the mod itself says: its name, the description from its own `plugin.json` and what its code
 can do. Loadout keeps no hand-written list of mods, so it works the same for any mod, yours or anyone else's.
 
-## Your own mods: trusted folders
+## Trusted mods: skip the audit for authors you trust
 
-Mods you write yourself don't need to wait for an audit on every version. List the folders they live in, in
-`~/.claude/loadout/trusted.json`:
+Some mods you don't want to audit on every release: your own, or a well-known author's you already trust. Open the mod's
+card, press **More ▾ → 🛡 Always trust**, and confirm. From then on every version of that mod loads without an audit, and
+its card says so. **Stop trusting** puts it back behind the gate. A mod the gate is holding has the same button, so you
+can trust it right there and it loads at once.
+
+Trust is kept by name **and** marketplace (`filetree@claude-code-filetree`), so a different mod that copies the name
+from another marketplace still goes through the audit. It lives in `~/.claude/loadout/trusted.json`:
 
 ```json
-{ "folders": ["/Users/you/code/my-mods"] }
+{
+  "mods": ["filetree@claude-code-filetree"],
+  "folders": ["/Users/you/code/my-mods"]
+}
 ```
 
-A mod loaded from inside one of those folders (a folder marketplace on your computer) runs in any version, without an
-audit. Only absolute paths count, and Loadout never writes this file: you do. Mods from anywhere else still go through
-the gate, even if they share a name with one of yours.
+`folders` is for mods you write yourself: any mod loaded from inside one of those absolute folders (a folder marketplace
+on your computer) skips the gate, in any version. Loadout never writes `folders`; you do.
 
 ## FAQ
 
@@ -104,6 +112,10 @@ gives a verdict before anything runs.
 **What happens when a plugin I trust gets an update?**
 The new version is held like a new mod. Loadout tells you it is there, and **Audit & update** reviews the change before
 it installs.
+
+**Can I skip the audit for a mod I trust?**
+Yes. **Always trust** on its card lets every version of that mod load without an audit, for that mod from that
+marketplace only. Your own mods can be trusted by folder. **Stop trusting** undoes it.
 
 **Will an update erase the changes I made to a mod?**
 No. Loadout backs up your changes and puts them back after the update.

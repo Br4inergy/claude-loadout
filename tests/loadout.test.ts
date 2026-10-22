@@ -4,7 +4,7 @@ import type { Engine } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
 import { builtinIds, capsOf, isSafeId, openCommandFor, pinsOf, rarityOf, sortRows, toRow } from '../hooks/catalogo'
-import { inTrustedFolder, isApproved, stillHeld, usesText } from '../hooks/gate'
+import { inTrustedFolder, isApproved, isTrustableId, isTrustedMod, stillHeld, usesText, withTrust } from '../hooks/gate'
 import { pickLang, words } from '../hooks/i18n'
 import { costOf } from '../hooks/pricing'
 import { changedFiles, changedList, compareVersions, listedVersion, sourceOf } from '../hooks/updates'
@@ -46,6 +46,7 @@ function engine(on: On, below: unknown = { type: 'Text', children: [''] }, langu
   const panes: string[] = []
   const hidden = new Set<string>()
   const toasts: string[] = []
+  const files: Record<string, string> = {}
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('command.register', () => ({ value: undefined }) as never)
   on('command.list', () => ({ value: [['agents-info', 'savvy-progress'], ['filetree', 'filetree']].map(([name, plugin]) => ({ name, plugin, description: '', source: 'plugin' })) }) as never)
@@ -55,9 +56,15 @@ function engine(on: On, below: unknown = { type: 'Text', children: [''] }, langu
   })
   on('env.get', ($, e) => ({ value: (e as { name?: string }).name === 'HOME' ? '/home/user' : undefined }) as never)
   on('fs.exists', () => ({ value: false }) as never)
-  on('fs.write', () => ({ value: undefined }) as never)
+  on('fs.write', ($, e) => {
+    const { path, text } = e as unknown as { path: string; text: string }
+    files[path] = text
+    return { value: undefined } as never
+  })
   on('fs.read', ($, e) => {
     const path = String((e as { path: string }).path)
+    if (path in files) return { value: files[path] } as never
+    if (path.endsWith('/loadout/trusted.json')) return { value: '' } as never
     if (path.endsWith('known_marketplaces.json'))
       return {
         value: JSON.stringify({
@@ -115,7 +122,7 @@ function engine(on: On, below: unknown = { type: 'Text', children: [''] }, langu
     return { text: String((e as { text?: string }).text ?? '') } as never
   })
   on('ui.render', { component: 'AbovePrompt' }, () => below as never)
-  return { runs, ran, toasts, panes, hidden, prompts }
+  return { runs, ran, toasts, panes, hidden, prompts, files }
 }
 
 const start = ($: Engine) => $.session.start({ cwd: '/tmp', surface: 'desktop', isInteractive: true } as never)
@@ -517,4 +524,38 @@ test('pure logic: a mod in a trusted folder skips the gate, matched on whole fol
   expect(inTrustedFolder(folders, undefined)).toBe(false)
   expect(inTrustedFolder(['relative/mods', '/', 7], '/Users/me/mods/x')).toBe(false)
   expect(inTrustedFolder([], '/Users/me/mods/x')).toBe(false)
+})
+
+test('pure logic: a mod is trusted by name and marketplace, never by name alone', () => {
+  expect(isTrustedMod(['filetree@claude-code-filetree'], 'filetree@claude-code-filetree')).toBe(true)
+  expect(isTrustedMod(['filetree@claude-code-filetree'], 'filetree@evil-market')).toBe(false)
+  expect(isTrustedMod(['filetree'], 'filetree@claude-code-filetree')).toBe(false)
+  expect(isTrustedMod(['x@inline'], 'x@inline')).toBe(false)
+  expect(isTrustedMod(['x@builtin'], 'x@builtin')).toBe(false)
+  expect(isTrustedMod(['a@b'], undefined)).toBe(false)
+  expect(isTrustableId('a@b@c')).toBe(false)
+  expect(withTrust({ folders: ['/me/mods'], mods: ['b@m'] }, 'a@m', true)).toEqual({ folders: ['/me/mods'], mods: ['a@m', 'b@m'] })
+  expect(withTrust({ mods: ['a@m', 'b@m'] }, 'a@m', false)).toEqual({ mods: ['b@m'] })
+  expect(withTrust({}, 'a@m', true)).toEqual({ mods: ['a@m'] })
+})
+
+test('Always trust asks once more, then writes the mod to trusted.json and marks its card; Stop trusting undoes it', async ($, on) => {
+  const { files } = engine(on)
+  await start($)
+  await $.command.run({ command: 'loadout' } as never)
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const pane = await $.ui.mount({ ...PANE, surface })
+    await pane.press({ key: 'more-filetree@claude-code-filetree' })
+    await pane.press({ key: 'trust-filetree@claude-code-filetree' })
+    expect(JSON.stringify(await pane.drawn())).toContain(words('en').trustWarn)
+    expect(JSON.parse(files['/home/user/.claude/loadout/trusted.json'] ?? '{}').mods ?? []).toEqual([])
+    await pane.press({ key: 'trust-filetree@claude-code-filetree' })
+    expect(JSON.parse(files['/home/user/.claude/loadout/trusted.json'] ?? '{}')).toEqual({ mods: ['filetree@claude-code-filetree'] })
+    expect(JSON.stringify(await pane.drawn())).toContain(words('en').trustedBadge)
+    await pane.press({ key: 'untrust-filetree@claude-code-filetree' })
+    expect(JSON.parse(files['/home/user/.claude/loadout/trusted.json'] ?? '{}')).toEqual({ mods: [] })
+    expect(JSON.stringify(await pane.drawn())).not.toContain(words('en').trustedBadge)
+    await pane.press({ key: 'more-filetree@claude-code-filetree' })
+    await pane.unmount()
+  }
 })

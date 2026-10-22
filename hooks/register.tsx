@@ -8,7 +8,8 @@
  *  Band (above the prompt): one row with the ⚙ Loadout button, a ⚠ button when the gate holds a mod back and a ↑ button
  *  when updates wait; the bands of the other mods show under it, each one shown or hidden on its own from the panel.
  *  Audit gate: a mod whose name and version you have not approved never loads; Loadout tells you and offers to have
- *  Claude audit it. Every block is written to ~/.claude/loadout/blocked.log.
+ *  Claude audit it. Every block is written to ~/.claude/loadout/blocked.log. A mod you trust ("Always trust", kept by
+ *  name@marketplace in ~/.claude/loadout/trusted.json) or one loaded from a folder you trust skips it in any version.
  *  Safe updates: a new version never runs until you approve it; your own changes to a pinned clone are backed up and kept.
  *
  * Tokens: none of its own. It reads the plugin list and what each mod spends on the model, and runs `claude plugin ...`
@@ -22,7 +23,7 @@ import { aboutFolds } from './about'
 import { mergeSeen, splitBands } from './bandas'
 import type { Link } from './bandas'
 import { RARITY_COLOR, builtinIds, capsOf, isSafeId, openCommandFor, pinsOf, rarityOf, shortName, sortRows, toRow } from './catalogo'
-import { inTrustedFolder, isApproved, stillHeld, usesText } from './gate'
+import { inTrustedFolder, isApproved, isTrustableId, isTrustedMod, stillHeld, usesText, withTrust } from './gate'
 import { pickLang, words } from './i18n'
 import type { Lang } from './i18n'
 import { costOf } from './pricing'
@@ -45,6 +46,8 @@ const hiddenBands = atom({ plugin: 'loadout', key: 'hiddenBands' } as const, [])
 const spend = atom({ plugin: 'loadout', key: 'spend' } as const, {})
 const updates = atom({ plugin: 'loadout', key: 'updates' } as const, {})
 const checking = atom({ plugin: 'loadout', key: 'checking' } as const, false)
+const trusted = atom({ plugin: 'loadout', key: 'trusted' } as const, [])
+const trustConfirm = atom({ plugin: 'loadout', key: 'trustConfirm' } as const, null)
 
 const PANE = 'loadout'
 /** Capabilities that touch the machine or the model get the warning tint. */
@@ -112,16 +115,40 @@ async function readApproved($: EngineInterface): Promise<Record<string, Approval
   }
 }
 
-// Folders whose mods you trust without an audit (your own): `{ "folders": ["/abs/path"] }`. Written by you, never by Loadout.
+// Mods you trust in any version, without an audit: `{ "mods": ["<name>@<marketplace>"], "folders": ["/abs/path"] }`.
+// `mods` is written by the Trust button; `folders` (your own mods, on your computer) by you.
 const trustedPath = async ($: EngineInterface) => `${await home($)}/.claude/loadout/trusted.json`
 
-async function readTrustedFolders($: EngineInterface): Promise<unknown[]> {
+async function readTrusted($: EngineInterface): Promise<Record<string, unknown>> {
   try {
-    const data = JSON.parse(await $.fs.read(await trustedPath($))) as { folders?: unknown }
-    return Array.isArray(data.folders) ? data.folders : []
+    const data = JSON.parse(await $.fs.read(await trustedPath($))) as unknown
+    return data && typeof data === 'object' && !Array.isArray(data) ? (data as Record<string, unknown>) : {}
   } catch {
-    return []
+    return {}
   }
+}
+
+const listOf = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
+
+/** The trusted mod ids, for the panel. */
+async function loadTrusted($: EngineInterface) {
+  const ids = listOf((await readTrusted($)).mods).filter((m): m is string => isTrustableId(m as string))
+  await update($, trusted, () => ids)
+}
+
+/** Trusts a mod in any version, or stops trusting it. A held one loads at once. */
+async function setTrust($: EngineInterface, id: string, on: boolean) {
+  if (!isTrustableId(id)) return
+  await $.fs.write(await trustedPath($), `${JSON.stringify(withTrust(await readTrusted($), id, on), null, 2)}\n`)
+  await update($, trustConfirm, () => null)
+  await loadTrusted($)
+  if (!on) return
+  const before = await read($, blocked)
+  const still = before.filter(b => b.id !== id)
+  if (still.length === before.length) return
+  await update($, blocked, () => still)
+  toast($, words(lang).trustedReload)
+  await $.command.run({ command: 'reload-plugins' }).catch(() => undefined)
 }
 
 async function approve($: EngineInterface, b: Blocked, by: Approval['by']) {
@@ -163,6 +190,7 @@ async function recheck($: EngineInterface) {
 
 /** Re-reads the installed plugins, marks which are mods (ship function hooks) and scans what each mod can do. */
 async function loadMods($: EngineInterface) {
+  await loadTrusted($).catch(() => undefined)
   try {
     const bin = await claudeBin($)
     const run = await $.process.run([bin, 'plugin', 'list', '--json'], { timeoutMs: 30_000 })
@@ -387,8 +415,9 @@ export const register: Register = on => {
     if (e.name === 'loadout') return next(e)
     const approved = await readApproved($)
     if (isApproved(approved, e.name, e.version)) return next(e)
-    if (inTrustedFolder(await readTrustedFolders($), e.root)) return next(e)
-    const b: Blocked = { name: e.name, version: e.version ?? '', root: e.root, caps: capsOf(usesText(e.uses)) }
+    const trust = await readTrusted($)
+    if (isTrustedMod(listOf(trust.mods), e.provenance) || inTrustedFolder(listOf(trust.folders), e.root)) return next(e)
+    const b: Blocked = { name: e.name, version: e.version ?? '', root: e.root, caps: capsOf(usesText(e.uses)), id: e.provenance }
     await update($, blocked, list => [...list.filter(x => x.name !== b.name), b])
     toast($, words(lang).blockedToast(e.name))
     await logBlock($, b)
@@ -518,6 +547,8 @@ export const register: Register = on => {
     const usage = await read($, spend)
     const ups = await read($, updates)
     const isChecking = await read($, checking)
+    const trustedIds = await read($, trusted)
+    const trustAsked = await read($, trustConfirm)
     // Cells a card's text gets: the pane's width less the card's border and padding. Unknown: the text wraps whole.
     const cols = (e.props as { bodyColumns?: unknown }).bodyColumns
     const cardCols = typeof cols === 'number' && cols > 0 ? cols - 4 : null
@@ -587,6 +618,8 @@ export const register: Register = on => {
           )}
           {m.origin?.kind === 'github' && <Text dimColor wrap="wrap">{`⌂ ${w.fromStore(m.origin.repo)}`}</Text>}
           {m.origin?.kind === 'folder' && <Text dimColor wrap="wrap">{`⌂ ${m.pin ? w.fromLocalGit(m.pin) : w.fromFolder}`}</Text>}
+          {m.isMod && !self && trustedIds.includes(m.id) && <Text color="success" wrap="wrap">{`🛡 ${w.trustedBadge}`}</Text>}
+          {isOpen && trustAsked === m.id && !trustedIds.includes(m.id) && <Text color="warning" wrap="wrap">{w.trustWarn}</Text>}
           {up?.requested ? (
             <Text color="claude">{`↻ ${w.updating}`}</Text>
           ) : (
@@ -633,6 +666,14 @@ export const register: Register = on => {
               {up?.source === 'github' && up.repo && (
                 <Button key={`pin-${m.id}`} label={`⌁ ${w.pin}`} onPress={() => void $.prompt.submit({ text: w.askPin(m.label, m.id, up.repo ?? '') })} />
               )}
+              {m.isMod && !m.builtin && isTrustableId(m.id) &&
+                (trustedIds.includes(m.id) ? (
+                  <Button key={`untrust-${m.id}`} dimColor label={w.untrust} onPress={() => void setTrust($, m.id, false)} />
+                ) : trustAsked === m.id ? (
+                  <Button key={`trust-${m.id}`} variant="primary" label={w.trustSure} onPress={() => void setTrust($, m.id, true)} />
+                ) : (
+                  <Button key={`trust-${m.id}`} label={`🛡 ${w.trustAlways}`} onPress={() => void update($, trustConfirm, () => m.id)} />
+                ))}
               {!m.builtin &&
                 (pending === m.id ? (
                   <Button key={`rm-${m.id}`} variant="primary" label={w.sure} onPress={() => void act($, 'uninstall', m)} />
@@ -670,7 +711,14 @@ export const register: Register = on => {
             label={w.allowAnyway}
             onPress={() => void approve($, b, 'manual').then(() => recheck($))}
           />
+          {isTrustableId(b.id) &&
+            (trustAsked === b.id ? (
+              <Button key={`trust-held-${b.name}`} variant="primary" label={w.trustSure} onPress={() => void setTrust($, b.id ?? '', true)} />
+            ) : (
+              <Button key={`trust-held-${b.name}`} dimColor label={`🛡 ${w.trustAlways}`} onPress={() => void update($, trustConfirm, () => b.id ?? null)} />
+            ))}
         </Box>
+        {trustAsked === b.id && isTrustableId(b.id) && <Text color="warning" wrap="wrap">{w.trustWarn}</Text>}
       </Box>
     )
 

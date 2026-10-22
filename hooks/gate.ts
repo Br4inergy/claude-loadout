@@ -35,3 +35,22 @@ export function inTrustedFolder(folders: readonly unknown[], root: string | unde
     return dir !== '' && (root === dir || root.startsWith(`${dir}/`))
   })
 }
+
+/**
+ * Whether a mod is trusted by name and source (`trusted.json` → `mods`): `<name>@<marketplace>`, so a mod of the same name
+ * from another marketplace is not. A `--plugin-dir` (`@inline`) or bundled (`@builtin`) plugin is never trusted this way.
+ */
+export function isTrustedMod(mods: readonly unknown[], id: string | undefined): boolean {
+  if (!isTrustableId(id)) return false
+  return mods.some(m => m === id)
+}
+
+/** An id that can be trusted: `<name>@<marketplace>`, from a real marketplace. */
+export const isTrustableId = (id: string | undefined): id is string =>
+  typeof id === 'string' && /^[^@\s]+@[^@\s]+$/.test(id) && !id.endsWith('@inline') && !id.endsWith('@builtin')
+
+/** `trusted.json` with one id added or removed, every other key kept as it was. */
+export function withTrust(file: Record<string, unknown>, id: string, on: boolean): Record<string, unknown> {
+  const mods = (Array.isArray(file.mods) ? file.mods : []).filter((m): m is string => typeof m === 'string' && m !== id)
+  return { ...file, mods: on ? [...mods, id].sort() : mods }
+}

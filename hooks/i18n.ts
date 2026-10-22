@@ -101,6 +101,12 @@ const EN = {
   auditNow: 'Audit with Claude',
   allowAnyway: 'Allow without audit',
   approvedReload: 'Approved · reloading',
+  trustAlways: 'Always trust',
+  trustSure: 'Sure? Trust it',
+  trustWarn: 'Every future version of this mod will load without an audit. Trust only mods whose author you trust.',
+  untrust: 'Stop trusting',
+  trustedBadge: 'Trusted: its updates load without an audit',
+  trustedReload: 'Trusted · reloading',
   askAudit: (name: string, version: string, root: string) =>
     `Loadout blocked the mod «${name}» v${version} (${root}) because it has not been audited. Audit it now: read every file of its hooks ` +
     'module, run `claude plugin validate` on it, and check for network calls, commands, writes outside its folder, reads of secrets or ' +
@@ -210,6 +216,12 @@ const ES: typeof EN = {
   auditNow: 'Auditar con Claude',
   allowAnyway: 'Permitir sin auditar',
   approvedReload: 'Aprobado · recargando',
+  trustAlways: 'Confiar siempre',
+  trustSure: '¿Seguro? Confiar',
+  trustWarn: 'Todas las versiones futuras de este mod cargarán sin auditoría. Confía solo en mods cuyo autor conozcas.',
+  untrust: 'Dejar de confiar',
+  trustedBadge: 'De confianza: sus actualizaciones cargan sin auditoría',
+  trustedReload: 'De confianza · recargando',
   askAudit: (name, version, root) =>
     `Loadout bloqueó el mod «${name}» v${version} (${root}) porque no está auditado. Audítalo ahora: lee todos los archivos de su ` +
     'módulo de hooks, corre `claude plugin validate` y revisa llamadas de red, comandos, escrituras fuera de su carpeta, lectura de ' +
