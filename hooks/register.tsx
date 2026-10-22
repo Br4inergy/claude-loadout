@@ -18,6 +18,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { Approval, Blocked, Cap, ModRow, UpdateInfo } from '../types'
+import { aboutFolds } from './about'
 import { mergeSeen, splitBands } from './bandas'
 import type { Link } from './bandas'
 import { RARITY_COLOR, builtinIds, capsOf, isSafeId, openCommandFor, pinsOf, rarityOf, shortName, sortRows, toRow } from './catalogo'
@@ -504,6 +505,9 @@ export const register: Register = on => {
     const usage = await read($, spend)
     const ups = await read($, updates)
     const isChecking = await read($, checking)
+    // Cells a card's text gets: the pane's width less the card's border and padding. Unknown: the text wraps whole.
+    const cols = (e.props as { bodyColumns?: unknown }).bodyColumns
+    const cardCols = typeof cols === 'number' && cols > 0 ? cols - 4 : null
 
     const card = (m: ModRow) => {
       const name = shortName(m.id)
@@ -545,7 +549,9 @@ export const register: Register = on => {
             <Text dimColor>{m.builtin ? ` · ${w.builtin}` : m.version ? ` · ${w.level(m.version)}` : ''}</Text>
           </Text>
           {m.about !== '' &&
-            (unfolded === m.id ? (
+            (!aboutFolds(m.about, cardCols) ? (
+              <Text color="warning" italic dimColor wrap="wrap">{`“${m.about}”`}</Text>
+            ) : unfolded === m.id ? (
               <Box flexDirection="column">
                 <Text color="warning" italic dimColor wrap="wrap">{`“${m.about}”`}</Text>
                 <Button key={`about-${m.id}`} plain onPress={() => void update($, aboutOpen, x => (x === m.id ? null : m.id))}>

@@ -1,6 +1,7 @@
 // Each other mod's band, shown or hidden on its own: `claude plugin test <mod folder>`.
 import { expect, mock, test } from 'claude-code/testing'
 
+import { aboutFolds } from '../hooks/about'
 import { mergeSeen, splitBands } from '../hooks/bandas'
 
 const row = (text: string) => ({ type: 'Text', children: [text] })
@@ -95,4 +96,11 @@ test('the panel lists each band that drew, and hiding one leaves the others (and
     await pane.unmount()
     await band.unmount()
   }
+})
+
+test('pure logic: the ▸ shows only when the description would be cut, never when the width is unknown', () => {
+  expect(aboutFolds('Corto', 40)).toBe(false)
+  expect(aboutFolds('x'.repeat(38), 40)).toBe(false)
+  expect(aboutFolds('x'.repeat(39), 40)).toBe(true)
+  expect(aboutFolds('x'.repeat(500), null)).toBe(false)
 })

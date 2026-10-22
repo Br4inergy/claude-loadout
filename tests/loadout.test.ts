@@ -464,17 +464,29 @@ test('each card says where the mod was installed from: a marketplace, or a git c
   }
 })
 
-test('descriptions open folded, and opening the panel folds them again', async ($, on) => {
+test('a description that fits shows whole, with no ▸', async ($, on) => {
   engine(on)
   await start($)
   await $.command.run({ command: 'loadout' } as never)
   const pane = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  const text = JSON.stringify(await pane.drawn())
+  expect(text).toContain('“Progress bar and an agents panel”')
+  expect(text).not.toContain('▸ “Progress bar')
+  expect(await pane.find({ key: 'about-savvy-progress@claude-kit' })).toBeUndefined()
+  await pane.unmount()
+})
+
+test('descriptions that do not fit open folded, and opening the panel folds them again', async ($, on) => {
+  engine(on)
+  await start($)
+  await $.command.run({ command: 'loadout' } as never)
+  const pane = await $.ui.mount({ ...PANE, props: { ...PANE.props, bodyColumns: 24 }, surface: 'desktop' })
   expect(JSON.stringify(await pane.drawn())).toContain('▸ “Progress bar and an agents panel”')
   await pane.press({ key: 'about-savvy-progress@claude-kit' })
   expect(JSON.stringify(await pane.drawn())).toContain('▴')
   await pane.unmount()
   await $.command.run({ command: 'loadout' } as never)
-  const again = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  const again = await $.ui.mount({ ...PANE, props: { ...PANE.props, bodyColumns: 24 }, surface: 'desktop' })
   expect(JSON.stringify(await again.drawn())).not.toContain('▴')
   await again.unmount()
 })

@@ -109,9 +109,9 @@ works the same for any mod, yours or anyone else's:
 
 | Rarity | Colour | When |
 | --- | --- | --- |
-| Poor | grey | Turned off |
+| Stored | grey | Turned off, kept in the inventory |
 | Common | white | A plain plugin (skills, commands, MCP servers): the audit gate does not cover it |
-| Uncommon | green | A mod: it passed the audit gate to load |
+| Enhanced | green | A mod: it passed the audit gate to load |
 | Rare | blue | Its code draws a panel of its own |
 | Epic | purple | Its code runs commands on your machine |
 | Legendary | orange | Loadout itself |
