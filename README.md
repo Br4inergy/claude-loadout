@@ -55,7 +55,8 @@ you at a glance how much power a mod has.
 
 Every mod and plugin you have, in one panel: equip or unequip with one switch, see the version, where it came from and
 what it spent on the model this session, open its panel, or uninstall it. Mods that draw a band above the prompt show
-under Loadout's, and you can show or hide each one.
+under Loadout's, and you can show or hide each one. A band that is only buttons sits on Loadout's own row instead of
+taking a row of its own.
 
 **Loadout uses no tokens of its own.** Audits and updates are Claude turns that start only when you press a button.
 

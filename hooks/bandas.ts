@@ -66,3 +66,24 @@ export function mergeSeen(seen: readonly string[], now: readonly string[]): stri
   for (const n of now) if (!out.includes(n)) out.push(n)
   return out
 }
+
+/**
+ * The Buttons of a band made of nothing but Buttons (inside plain Boxes), so Loadout can draw them on its own row instead of
+ * giving the band a row of its own; null when the band holds anything else (text, inputs, a meter).
+ */
+export function buttonsOnly(tree: unknown): unknown[] | null {
+  const found: unknown[] = []
+  const walk = (x: unknown): boolean => {
+    if (Array.isArray(x)) return x.every(walk)
+    if (x === null || x === undefined || x === false || x === '') return true
+    if (typeof x !== 'object') return false
+    const el = x as { type?: unknown; children?: unknown }
+    if (el.type === 'Button') {
+      found.push(x)
+      return true
+    }
+    if (el.type !== 'Box') return false
+    return el.children === undefined || walk(el.children)
+  }
+  return walk(tree) && found.length > 0 ? found : null
+}

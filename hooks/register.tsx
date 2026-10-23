@@ -20,7 +20,7 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { Approval, Blocked, Cap, ModRow, UpdateInfo } from '../types'
 import { aboutFolds } from './about'
-import { mergeSeen, splitBands } from './bandas'
+import { buttonsOnly, mergeSeen, splitBands } from './bandas'
 import type { Link } from './bandas'
 import { RARITY_COLOR, builtinIds, capsOf, isSafeId, openCommandFor, pinsOf, rarityOf, shortName, sortRows, toRow } from './catalogo'
 import { inTrustedFolder, isApproved, isTrustableId, isTrustedMod, stillHeld, usesText, withTrust } from './gate'
@@ -507,6 +507,9 @@ export const register: Register = on => {
     noteBands($, drawnBands.map(b => b.plugin))
     const hidden = await read($, hiddenBands)
     const shown = drawnBands.filter(b => !hidden.includes(b.plugin))
+    // A band of nothing but buttons joins Loadout's row instead of taking a row of its own.
+    const inline = shown.map(b => ({ plugin: b.plugin, buttons: buttonsOnly(b.tree) }))
+    const rows = shown.filter((_, i) => inline[i]?.buttons === null)
     const w = words(lang)
     const up = await read($, paneUp)
     const held = await read($, blocked)
@@ -516,9 +519,12 @@ export const register: Register = on => {
         <Box key="lo-row" gap={1} justifyContent="flex-end" alignItems="center" marginBottom={1}>
           {held.length > 0 && <Button key="lo-blocked" variant="primary" label={`⚠ ${w.blocked(held.length)}`} onPress={() => void showPane($)} />}
           {news > 0 && <Button key="lo-updates" label={`↑ ${w.updatesFound(news)}`} onPress={() => void showPane($)} />}
+          {inline.flatMap(b => (b.buttons ?? []).map((button, i) => (
+            <Box key={`lo-inline-${b.plugin}-${i}`}>{button as never}</Box>
+          )))}
           <Button key="lo-open" hotkey="l" variant={up ? 'primary' : undefined} label={`⚙ ${w.loadout}`} onPress={() => void togglePane($)} />
         </Box>
-        {shown.map(b => (
+        {rows.map(b => (
           <Box key={`lo-band-${b.plugin}`} flexDirection="column">
             {b.tree as never}
           </Box>

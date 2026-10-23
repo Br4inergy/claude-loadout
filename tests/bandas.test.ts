@@ -2,7 +2,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 
 import { aboutFolds } from '../hooks/about'
-import { mergeSeen, splitBands } from '../hooks/bandas'
+import { buttonsOnly, mergeSeen, splitBands } from '../hooks/bandas'
 
 const row = (text: string) => ({ type: 'Text', children: [text] })
 const nest = (own: unknown, below: unknown) => ({ type: 'Box', props: { flexDirection: 'column' }, children: [own, below] })
@@ -103,4 +103,39 @@ test('pure logic: the ▸ shows only when the description would be cut, never wh
   expect(aboutFolds('x'.repeat(38), 40)).toBe(false)
   expect(aboutFolds('x'.repeat(39), 40)).toBe(true)
   expect(aboutFolds('x'.repeat(500), null)).toBe(false)
+})
+
+test('pure logic: a band of only buttons joins the Loadout row; anything else keeps its own row', () => {
+  const btn = { type: 'Button', props: { label: '◉ Bob' } }
+  expect(buttonsOnly({ type: 'Box', props: { flexDirection: 'column' }, children: [{ type: 'Box', children: [btn] }] })).toEqual([btn])
+  expect(buttonsOnly(btn)).toEqual([btn])
+  expect(buttonsOnly({ type: 'Box', children: [btn, row('text')] })).toBe(null)
+  expect(buttonsOnly({ type: 'Box', children: [] })).toBe(null)
+  expect(buttonsOnly(row('only text'))).toBe(null)
+  expect(buttonsOnly('text')).toBe(null)
+})
+
+test('a mod whose band is only a button draws it on the Loadout row, and pressing it still reaches that mod', async ($, on) => {
+  let pressed = 0
+  mock.clock(on)
+  on('session.start', ($, e) => ({ cwd: e.cwd }) as never)
+  on('command.register', () => ({ value: undefined }) as never)
+  on('command.list', () => ({ value: [] }) as never)
+  on('store.get', () => ({ value: undefined }) as never)
+  on('store.set', () => ({ value: undefined }) as never)
+  on('store.delete', () => ({ value: undefined }) as never)
+  on('ui.render', { component: 'AbovePrompt' }, ($, e) => {
+    const { Box, Button } = $.ui.resolve(e)
+    return Box({ children: [Button({ key: 'x-open', label: '◉ Bob', onPress: () => void pressed++ })] }) as never
+  })
+  await $.session.start({ cwd: '/tmp', surface: 'desktop', isInteractive: true } as never)
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const band = await $.ui.mount({ ...BAND, surface })
+    const loRow = JSON.stringify(await band.find({ key: 'lo-row' }))
+    expect(loRow).toContain('◉ Bob')
+    expect(loRow).toContain('⚙ Loadout')
+    await band.press({ key: 'x-open', plugin: 'test' })
+    await band.unmount()
+  }
+  expect(pressed).toBe(2)
 })
