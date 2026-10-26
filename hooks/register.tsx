@@ -515,8 +515,9 @@ export const register: Register = on => {
     const held = await read($, blocked)
     const news = Object.values(await read($, updates)).filter(u => hasUpdate(u) && !u.requested).length
     return (
-      <Box flexDirection="column">
-        <Box key="lo-row" gap={1} justifyContent="flex-end" alignItems="center" marginBottom={1}>
+      // Each mod's band its own block: "md" is one row in the terminal and real breathing room on desktop.
+      <Box flexDirection="column" rowGap="md">
+        <Box key="lo-row" gap="sm" justifyContent="flex-end" alignItems="center">
           {held.length > 0 && <Button key="lo-blocked" variant="primary" label={`⚠ ${w.blocked(held.length)}`} onPress={() => void showPane($)} />}
           {news > 0 && <Button key="lo-updates" label={`↑ ${w.updatesFound(news)}`} onPress={() => void showPane($)} />}
           {inline.flatMap(b => (b.buttons ?? []).map((button, i) => (
